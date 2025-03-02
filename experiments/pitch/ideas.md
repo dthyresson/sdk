@@ -1,0 +1,3 @@
+- use langabse to enrich and summarisze
+- add fal to give a gift of submission to user and image
+- warm uo with colors
