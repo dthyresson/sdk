@@ -1,0 +1,155 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+  output          = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                 String       @id @default(cuid())
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime?    @updatedAt
+  email              String       @unique
+  name               String?
+  authToken          String?
+  authTokenExpiresAt DateTime?
+  submissions        Submission[]
+  otps               Otp[]
+}
+
+enum QuestionType {
+  TEXT
+  TEXT_AREA
+  NUMBER
+  BOOLEAN
+  CURRENCY
+  FILE
+  DATE
+  DATETIME
+  PHONE
+  URL
+}
+
+enum CurrencyType {
+  USD
+  GBP
+  CAD
+  EURO
+  AUD
+}
+
+enum SubmissionStatus {
+  IN_PROGRESS
+  COMPLETED
+  APPROVED
+  DENIED
+}
+
+model QuestionSet {
+  id            String   @id @default(cuid())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  name          String
+  versionNumber Int      @default(1)
+  isActive      Boolean  @default(false)
+
+  questions   Question[]
+  submissions Submission[]
+
+  @@unique([name, versionNumber])
+}
+
+model Question {
+  id               String       @id @default(cuid())
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  questionSetId    String
+  questionText     String
+  description      String?
+  hint             String
+  placeholder      String?
+  questionType     QuestionType
+  questionPosition Int          @default(0)
+  isRequired       Boolean      @default(false)
+
+  questionSet QuestionSet @relation(fields: [questionSetId], references: [id], onDelete: Cascade)
+  answers     Answer[]
+
+  @@unique([questionSetId, questionPosition])
+}
+
+model Submission {
+  id            String           @id @default(cuid())
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  completedAt   DateTime?
+  userId        String
+  questionSetId String
+  status        SubmissionStatus @default(IN_PROGRESS)
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  questionSet QuestionSet @relation(fields: [questionSetId], references: [id], onDelete: Cascade)
+  answers     Answer[]
+
+  raw             Json?
+  enriched        Json?
+  emailSubmission EmailSubmission?
+
+  @@unique([userId, questionSetId, status])
+}
+
+model Answer {
+  id             String        @id @default(cuid())
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  submissionId   String
+  questionId     String
+  answerText     String?
+  answerNumber   Float?
+  answerBoolean  Int?
+  answerCurrency Float?
+  currencyType   CurrencyType?
+  fileUrl        String?
+  answerDate     DateTime?
+  answerDatetime DateTime?
+  phone          String?
+  url            String?
+
+  submission Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  question   Question   @relation(fields: [questionId], references: [id])
+
+  @@unique([submissionId, questionId])
+}
+
+model Otp {
+  id        String    @id @default(cuid())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  userId    String
+  otpCode   String
+  expiresAt DateTime?
+  usedAt    DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model EmailSubmission {
+  id           String     @id @default(cuid())
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  content      String
+  summary      String?
+  analysis     String?
+  submission   Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  submissionId String     @unique
+}
